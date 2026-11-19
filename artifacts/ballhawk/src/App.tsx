@@ -14,6 +14,7 @@ type PlayRow = {
   confidenceByField: Record<string, number>;
   edited?: string[];
   confirmed?: string[];
+  bulkConfirmed?: string[];
 };
 type FieldKey = 'play' | 'down' | 'formation' | 'type' | 'result' | 'confidence';
 type DataFieldKey = 'down' | 'formation' | 'type' | 'result';
@@ -77,6 +78,9 @@ function Home() {
   const checkedCount = useMemo(() => rows.reduce((count, row) =>
     count + new Set([...(row.edited ?? []), ...(row.confirmed ?? [])]).size, 0), [rows]);
   const readyFields = Math.max(0, totalFields - needReview);
+  // Confirm all only covers flagged fields that have a value. Blank fields still need the coach to type something.
+  const confirmableCount = useMemo(() => rows.reduce((count, row) =>
+    count + dataFields.filter((key) => needsReview(row, key) && String(row[key] ?? '').trim()).length, 0), [rows]);
 
   function clearResults() {
     setExportCheck(false);
@@ -123,6 +127,18 @@ function Home() {
       : row));
   }
 
+  function confirmAll() {
+    setRows((current) => current.map((row) => {
+      const keys = dataFields.filter((key) => needsReview(row, key) && String(row[key] ?? '').trim());
+      if (!keys.length) return row;
+      return {
+        ...row,
+        confirmed: [...new Set([...(row.confirmed ?? []), ...keys])],
+        bulkConfirmed: [...new Set([...(row.bulkConfirmed ?? []), ...keys])],
+      };
+    }));
+  }
+
   function labelFor(key: FieldKey) {
     return columns.find((column) => column.key === key)?.label ?? key;
   }
@@ -143,7 +159,14 @@ function Home() {
     const headings = [...columns.map((column) => column.label), 'Review status'];
     const body = rows.map((row) => {
       const unreviewed = dataFields.filter((key) => needsReview(row, key)).map(labelFor);
-      const status = unreviewed.length ? `Unreviewed AI guess: ${unreviewed.join('; ')}` : 'Reviewed';
+      const bulk = dataFields
+        .filter((key) => row.bulkConfirmed?.includes(key) && !row.edited?.includes(key) && !needsReview(row, key))
+        .map(labelFor);
+      const parts = [
+        unreviewed.length ? `Unreviewed AI guess: ${unreviewed.join('; ')}` : '',
+        bulk.length ? `Bulk-confirmed AI guess: ${bulk.join('; ')}` : '',
+      ].filter(Boolean);
+      const status = parts.length ? parts.join(' | ') : 'Reviewed';
       const cells = columns.map(({ key }) => escapeCsv(key === 'confidence' ? `${row.confidence}%` : row[key]));
       return [...cells, escapeCsv(status)].join(',');
     });
@@ -194,7 +217,7 @@ function Home() {
 
     // Scripted analysis boundary: replace this sample lookup with a real vision model when one is connected.
     const scriptedPlays = sampleData[source][side as Side] as PlayRow[];
-    const resultRows = scriptedPlays.map((play) => ({ ...play, confidenceByField: { ...play.confidenceByField }, edited: [], confirmed: [] }));
+    const resultRows = scriptedPlays.map((play) => ({ ...play, confidenceByField: { ...play.confidenceByField }, edited: [], confirmed: [], bulkConfirmed: [] }));
     setRows([]);
     setClipError(false);
     setBusy(true);
@@ -339,6 +362,16 @@ function Home() {
                       <div className="results-actions">
                         <button className="secondary-button" type="button" onClick={focusFirstReview} disabled={needReview === 0} data-testid="button-review">
                           {needReview > 0 ? `Review fields (${needReview})` : 'All fields reviewed'}
+                        </button>
+                        <button
+                          className="secondary-button confirm-all-button"
+                          type="button"
+                          onClick={confirmAll}
+                          disabled={confirmableCount === 0}
+                          title="Mark every yellow cell that has a value as correct. Blank cells still need typing."
+                          data-testid="button-confirm-all"
+                        >
+                          ✓ Confirm all{confirmableCount > 0 ? ` (${confirmableCount})` : ''}
                         </button>
                         <button className="secondary-button" type="button" onClick={requestExport} data-testid="button-export">Export CSV</button>
                         <button className="secondary-button" type="button" onClick={resetRun} data-testid="button-another-clip">Tag another clip</button>

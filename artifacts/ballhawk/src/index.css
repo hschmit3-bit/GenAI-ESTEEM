@@ -316,3 +316,8 @@ td { border-top: 1px solid #d8d3d6; }
 .confirm-button { position:absolute; right:4px; top:6px; width:24px; height:24px; display:grid; place-items:center; padding:0; border:1px solid #c9b25a; border-radius:5px; background:#fff; color:#5a4500; font-size:13px; font-weight:800; cursor:pointer; }
 .confirm-button:hover { background:#eaf4e8; border-color:#7fa874; color:#2f5a2a; }
 .confirm-button:focus-visible { outline:2px solid #829a58; outline-offset:1px; }
+.confirm-all-button:not(:disabled) { border-color:#7fa874; background:#eaf4e8; color:#2f5a2a; }
+.confirm-all-button:not(:disabled):hover { background:#d9ebd4; }
+.results-title-row { flex-wrap:wrap; }
+.results-actions { flex-wrap:wrap; justify-content:flex-end; }
+.results-actions button { white-space:nowrap; }
