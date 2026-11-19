@@ -10,22 +10,41 @@ type PlayRow = {
   formation: string;
   type: string;
   result: string;
-  confidence: number | string;
+  confidence: number;
   confidenceByField: Record<string, number>;
   edited?: string[];
+  confirmed?: string[];
 };
 type FieldKey = 'play' | 'down' | 'formation' | 'type' | 'result' | 'confidence';
-type CellMeta = { key: FieldKey; label: string; confidenceKey?: string };
+type DataFieldKey = 'down' | 'formation' | 'type' | 'result';
+type CellMeta = { key: FieldKey; label: string };
 
 const sampleNames = Object.keys(sampleData) as SampleName[];
 const cellFields: CellMeta[] = [
   { key: 'play', label: 'Play #' },
   { key: 'down', label: 'Down & Distance' },
-  { key: 'formation', label: 'Formation', confidenceKey: 'formation' },
-  { key: 'type', label: 'Play Type', confidenceKey: 'type' },
-  { key: 'result', label: 'Result (yards)', confidenceKey: 'result' },
-  { key: 'confidence', label: 'Confidence', confidenceKey: 'confidence' },
+  { key: 'formation', label: 'Formation' },
+  { key: 'type', label: 'Play Type' },
+  { key: 'result', label: 'Result (yards)' },
+  { key: 'confidence', label: 'Confidence' },
 ];
+// Only these four columns are data a coach reviews. Play # and Confidence are read-only.
+const dataFields: DataFieldKey[] = ['down', 'formation', 'type', 'result'];
+const isDataField = (key: FieldKey): key is DataFieldKey => (dataFields as FieldKey[]).includes(key);
+const REVIEW_THRESHOLD = 70;
+
+function fieldConfidence(row: PlayRow, key: DataFieldKey): number {
+  return row.confidenceByField[key] ?? row.confidence;
+}
+
+// The single rule for "needs review". The summary, banner, yellow cells, Review button and export check all use it.
+// A blank field always needs review. A low-confidence field stops needing review once the coach edits it
+// or confirms the AI's value with the check button.
+function needsReview(row: PlayRow, key: DataFieldKey): boolean {
+  if (!String(row[key] ?? '').trim()) return true;
+  if (row.edited?.includes(key) || row.confirmed?.includes(key)) return false;
+  return fieldConfidence(row, key) < REVIEW_THRESHOLD;
+}
 const allowedTypes = ['.mp4', '.mov', '.webm'];
 const corruptMessage = "BallHawk couldn't read this clip. Upload an .mp4, .mov, or .webm file, or try a sample clip.";
 
@@ -44,6 +63,7 @@ function Home() {
   const [busy, setBusy] = useState(false);
   const [complete, setComplete] = useState(false);
   const [activePlay, setActivePlay] = useState(0);
+  const [exportCheck, setExportCheck] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const formationHeading = (taggedSide || side) === 'defense' ? 'Defensive Front' : 'Offensive Formation';
@@ -52,17 +72,14 @@ function Home() {
   ), [formationHeading]);
 
   const needReview = useMemo(() => rows.reduce((count, row) =>
-    count + cellFields.slice(1).filter((field) => {
-      const value = String(row[field.key] ?? '');
-      const confidence = field.confidenceKey === 'confidence'
-        ? Number(row.confidence)
-        : Number(row.confidenceByField[field.confidenceKey ?? field.key] ?? row.confidence);
-      return !value.trim() || confidence < 70;
-    }).length, 0), [rows]);
-  const totalFields = rows.length * 5;
-  const highConfidence = Math.max(0, totalFields - needReview);
+    count + dataFields.filter((key) => needsReview(row, key)).length, 0), [rows]);
+  const totalFields = rows.length * dataFields.length;
+  const checkedCount = useMemo(() => rows.reduce((count, row) =>
+    count + new Set([...(row.edited ?? []), ...(row.confirmed ?? [])]).size, 0), [rows]);
+  const readyFields = Math.max(0, totalFields - needReview);
 
   function clearResults() {
+    setExportCheck(false);
     setRows([]);
     setSourceName('');
     setResultSample('');
@@ -93,27 +110,43 @@ function Home() {
     }
   }
 
-  function markEdited(rowIndex: number, key: FieldKey, value: string) {
+  function markEdited(rowIndex: number, key: DataFieldKey, value: string) {
     setRows((current) => current.map((row, index) => {
       if (index !== rowIndex) return row;
-      const next = { ...row, edited: [...new Set([...(row.edited ?? []), key])] };
-      if (key === 'confidence') {
-        const parsed = Number(value.replace('%', '').trim());
-        next.confidence = Number.isFinite(parsed) ? parsed : value;
-      } else {
-        next[key] = value as never;
-      }
-      return next;
+      return { ...row, [key]: value, edited: [...new Set([...(row.edited ?? []), key])] };
     }));
+  }
+
+  function confirmField(rowIndex: number, key: DataFieldKey) {
+    setRows((current) => current.map((row, index) => index === rowIndex
+      ? { ...row, confirmed: [...new Set([...(row.confirmed ?? []), key])] }
+      : row));
+  }
+
+  function labelFor(key: FieldKey) {
+    return columns.find((column) => column.key === key)?.label ?? key;
+  }
+
+  function requestExport() {
+    if (!rows.length) return;
+    if (needReview > 0) {
+      setExportCheck(true);
+      return;
+    }
+    downloadCsv();
   }
 
   function downloadCsv() {
     if (!rows.length) return;
+    setExportCheck(false);
     const escapeCsv = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
-    const headings = columns.map((column) => column.label);
-    const body = rows.map((row) => columns.map(({ key }) =>
-      escapeCsv(key === 'confidence' && typeof row.confidence === 'number' ? `${row.confidence}%` : row[key])
-    ).join(','));
+    const headings = [...columns.map((column) => column.label), 'Review status'];
+    const body = rows.map((row) => {
+      const unreviewed = dataFields.filter((key) => needsReview(row, key)).map(labelFor);
+      const status = unreviewed.length ? `Unreviewed AI guess: ${unreviewed.join('; ')}` : 'Reviewed';
+      const cells = columns.map(({ key }) => escapeCsv(key === 'confidence' ? `${row.confidence}%` : row[key]));
+      return [...cells, escapeCsv(status)].join(',');
+    });
     const csv = [headings.map(escapeCsv).join(','), ...body].join('\r\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -125,6 +158,7 @@ function Home() {
   }
 
   function focusFirstReview() {
+    setExportCheck(false);
     const target = document.querySelector<HTMLInputElement>('[data-review="true"]');
     target?.focus();
     target?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
@@ -160,7 +194,7 @@ function Home() {
 
     // Scripted analysis boundary: replace this sample lookup with a real vision model when one is connected.
     const scriptedPlays = sampleData[source][side as Side] as PlayRow[];
-    const resultRows = scriptedPlays.map((play) => ({ ...play, confidenceByField: { ...play.confidenceByField }, edited: [] }));
+    const resultRows = scriptedPlays.map((play) => ({ ...play, confidenceByField: { ...play.confidenceByField }, edited: [], confirmed: [] }));
     setRows([]);
     setClipError(false);
     setBusy(true);
@@ -200,7 +234,7 @@ function Home() {
           <div>
             <p className="eyebrow">Sideline film, made useful</p>
             <h1>BallHawk — Film Breakdown Assistant</h1>
-            <p className="instruction">Choose what you're watching, add a clip, and BallHawk fills in the breakdown sheet. Yellow cells need your review.</p>
+            <p className="instruction">Choose what you're watching, add a clip, and BallHawk fills in the breakdown sheet. Yellow cells need your review. Fix a wrong cell by typing in it, or press ✓ if the AI got it right.</p>
           </div>
           <div className="session-chip">Local demo · no video is uploaded</div>
         </section>
@@ -277,6 +311,7 @@ function Home() {
                 <option value="">Choose a sample</option>
                 {sampleNames.map((name) => <option key={name} value={name}>{name}</option>)}
               </select>
+              <p className="form-error" role="alert" data-testid="error-clip-missing">{errors.clip}</p>
             </div>
             <button className="tag-button" type="button" onClick={tagPlays} disabled={busy} data-testid="button-tag-plays">
               {busy ? 'Tagging plays…' : 'Tag Plays'}
@@ -302,8 +337,10 @@ function Home() {
                     </div>
                     {complete && (
                       <div className="results-actions">
-                        <button className="secondary-button" type="button" onClick={focusFirstReview} data-testid="button-review">Review fields</button>
-                        <button className="secondary-button" type="button" onClick={downloadCsv} data-testid="button-export">Export CSV</button>
+                        <button className="secondary-button" type="button" onClick={focusFirstReview} disabled={needReview === 0} data-testid="button-review">
+                          {needReview > 0 ? `Review fields (${needReview})` : 'All fields reviewed'}
+                        </button>
+                        <button className="secondary-button" type="button" onClick={requestExport} data-testid="button-export">Export CSV</button>
                         <button className="secondary-button" type="button" onClick={resetRun} data-testid="button-another-clip">Tag another clip</button>
                       </div>
                     )}
@@ -312,14 +349,29 @@ function Home() {
                   <div className="summary" aria-live="polite" data-testid="summary-breakdown">
                     <span className="summary-pill"><strong>{rows.length} plays</strong> tagged</span>
                     <span className="summary-pill"><strong>{totalFields} fields</strong></span>
-                    <span className="summary-pill"><strong>{highConfidence}</strong> high confidence</span>
-                    <span className="summary-pill"><strong>{needReview}</strong> need review</span>
+                    <span className="summary-pill"><strong>{readyFields}</strong> ready</span>
+                    <span className={`summary-pill${needReview > 0 ? ' pill-review' : ''}`} data-testid="text-need-review"><strong>{needReview}</strong> need review</span>
+                    {checkedCount > 0 && <span className="summary-pill"><strong>{checkedCount}</strong> checked by you</span>}
                   </div>
                 </div>
                 {resultSample === sampleNames[1] && !uploadedDemo && complete && (
                   <div className="warning" data-testid="warning-low-visibility">
                     <span className="warning-mark" aria-hidden="true">!</span>
-                    Low visibility detected (rain/end-zone angle). 5 of 15 fields need review.
+                    {needReview > 0
+                      ? `Low visibility detected (rain/end-zone angle). ${needReview} of ${totalFields} fields need review.`
+                      : `Low visibility detected (rain/end-zone angle). All ${totalFields} fields have been reviewed.`}
+                  </div>
+                )}
+                {exportCheck && needReview > 0 && (
+                  <div className="export-check" role="alertdialog" aria-labelledby="export-check-title" data-testid="export-check">
+                    <div>
+                      <p className="export-check-title" id="export-check-title">{needReview} {needReview === 1 ? 'field still needs' : 'fields still need'} review</p>
+                      <p className="export-check-body">These are AI guesses you haven't checked yet. If you export now, the CSV will mark them in a "Review status" column so they aren't mistaken for confirmed data.</p>
+                    </div>
+                    <div className="export-check-actions">
+                      <button className="tag-button export-primary" type="button" onClick={focusFirstReview} data-testid="button-review-first">Review fields first</button>
+                      <button className="secondary-button" type="button" onClick={downloadCsv} data-testid="button-export-anyway">Export anyway</button>
+                    </div>
                   </div>
                 )}
                 {busy && (
@@ -337,29 +389,44 @@ function Home() {
                         <tr key={`${rowIndex}-${row.play}`} data-testid={`row-play-${rowIndex + 1}`}>
                           {columns.map((column) => {
                             const key = column.key;
-                            const raw = key === 'confidence'
-                              ? `${row.confidence}${typeof row.confidence === 'number' ? '%' : ''}`
-                              : String(row[key] ?? '');
-                            const fieldConfidence = key === 'confidence'
-                              ? Number(row.confidence)
-                              : Number(row.confidenceByField[column.confidenceKey ?? key] ?? row.confidence);
-                            const review = key !== 'play' && (!raw.trim() || fieldConfidence < 70);
-                            const edited = row.edited?.includes(key) ?? false;
-                            const inputValue = raw.trim() ? raw : '— needs review —';
+                            if (!isDataField(key)) {
+                              const text = key === 'confidence' ? `${row.confidence}%` : row.play;
+                              return (
+                                <td key={key}>
+                                  <span className="cell-readonly" data-testid={`text-cell-${key}-${rowIndex + 1}`}>{text}</span>
+                                </td>
+                              );
+                            }
+                            const raw = String(row[key] ?? '');
+                            const review = needsReview(row, key);
+                            const edited = (row.edited?.includes(key) ?? false) && !review;
+                            const confirmed = !edited && (row.confirmed?.includes(key) ?? false) && !review;
+                            const reviewNote = raw.trim() ? `Review · ${fieldConfidence(row, key)}%` : 'Review · blank';
                             return (
                               <td key={key}>
                                 <div className="cell-wrap">
                                   <input
-                                    className={`cell-input${review ? ' needs-review' : ''}${edited ? ' edited' : ''}`}
-                                    value={inputValue}
+                                    className={`cell-input${review ? ' needs-review' : ''}${edited || confirmed ? ' edited' : ''}`}
+                                    value={raw}
+                                    placeholder={raw.trim() ? undefined : 'Not detected — type it in'}
                                     aria-label={`${column.label}, play ${rowIndex + 1}${review ? ', needs review' : ''}`}
                                     data-review={review ? 'true' : undefined}
                                     data-testid={`input-cell-${key}-${rowIndex + 1}`}
-                                    onFocus={(event) => { if (!raw.trim()) event.currentTarget.select(); }}
-                                    onChange={(event) => markEdited(rowIndex, key, event.target.value === '— needs review —' ? '' : event.target.value)}
+                                    onChange={(event) => markEdited(rowIndex, key, event.target.value)}
                                   />
                                   {edited && <span className="cell-status">edited</span>}
-                                  {review && <span className="review-tag">Review</span>}
+                                  {confirmed && <span className="cell-status">confirmed</span>}
+                                  {review && raw.trim() && (
+                                    <button
+                                      className="confirm-button"
+                                      type="button"
+                                      onClick={() => confirmField(rowIndex, key)}
+                                      aria-label={`Confirm ${column.label}, play ${rowIndex + 1}: ${raw} is correct`}
+                                      title="This value is correct"
+                                      data-testid={`button-confirm-${key}-${rowIndex + 1}`}
+                                    >✓</button>
+                                  )}
+                                  {review && <span className="review-tag">{reviewNote}</span>}
                                 </div>
                               </td>
                             );

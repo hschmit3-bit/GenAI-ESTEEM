@@ -300,3 +300,19 @@ td { border-top: 1px solid #d8d3d6; }
 .progress-track { background: #f0d6da; }
 .progress-fill { background: #c8102e; }
 .bottom-note { color: #c8102e; }
+
+/* Review count + export check (prototype revision) */
+.secondary-button:disabled { opacity:.55; cursor:default; }
+.summary-pill.pill-review { background:#fbf3d5; color:#675526; }
+.summary-pill.pill-review strong { color:#5a4500; }
+.cell-readonly { display:block; padding:0 7px; color:#2e3e34; font-size:12px; font-weight:600; white-space:nowrap; }
+.cell-input::placeholder { color:#80672c; font-weight:500; font-style:italic; }
+.export-check { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 20px; padding:14px 24px; background:#fff7e0; border-bottom:1px solid #eadca7; color:#4a3d18; }
+.export-check-title { margin:0 0 3px; font-size:13px; font-weight:800; }
+.export-check-body { margin:0; max-width:520px; font-size:12px; line-height:1.5; }
+.export-check-actions { display:flex; gap:8px; align-items:center; }
+.export-check .export-primary { width:auto; min-height:35px; margin:0; padding:0 14px; font-size:11px; }
+.cell-wrap:has(.confirm-button) .cell-input { padding-right:30px; }
+.confirm-button { position:absolute; right:4px; top:6px; width:24px; height:24px; display:grid; place-items:center; padding:0; border:1px solid #c9b25a; border-radius:5px; background:#fff; color:#5a4500; font-size:13px; font-weight:800; cursor:pointer; }
+.confirm-button:hover { background:#eaf4e8; border-color:#7fa874; color:#2f5a2a; }
+.confirm-button:focus-visible { outline:2px solid #829a58; outline-offset:1px; }

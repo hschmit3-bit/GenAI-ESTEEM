@@ -13,14 +13,14 @@
   },
   "Sample B: Rainy end-zone film, similar jersey colors (3 plays)": {
     "offense": [
-      { "play": "01", "down": "3rd & 4", "formation": "Shotgun (uncertain, 55%)", "type": "Pass", "result": "+6", "confidence": "mixed", "confidenceByField": { "formation": 55 } },
-      { "play": "02", "down": "", "formation": "Singleback", "type": "Run", "result": "+2", "confidence": 60, "confidenceByField": { "down": 0 } },
-      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass (50%)", "result": "Incomplete", "confidence": 78, "confidenceByField": { "formation": 80, "type": 50 } }
+      { "play": "01", "down": "3rd & 4", "formation": "Shotgun", "type": "Pass", "result": "+6", "confidence": 77, "confidenceByField": { "down": 88, "formation": 55, "type": 84, "result": 80 } },
+      { "play": "02", "down": "", "formation": "Singleback", "type": "Run", "result": "+2", "confidence": 61, "confidenceByField": { "down": 0, "formation": 81, "type": 86, "result": 77 } },
+      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass", "result": "Incomplete", "confidence": 56, "confidenceByField": { "down": 85, "formation": 0, "type": 50, "result": 90 } }
     ],
     "defense": [
-      { "play": "01", "down": "3rd & 4", "formation": "Nickel (uncertain, 55%)", "type": "Pass", "result": "+6", "confidence": "mixed", "confidenceByField": { "formation": 55 } },
-      { "play": "02", "down": "", "formation": "4-3 Over", "type": "Run", "result": "+2", "confidence": 60, "confidenceByField": { "down": 0 } },
-      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass (50%)", "result": "Incomplete", "confidence": 78, "confidenceByField": { "formation": 80, "type": 50 } }
+      { "play": "01", "down": "3rd & 4", "formation": "Nickel", "type": "Pass", "result": "6 yd", "confidence": 77, "confidenceByField": { "down": 88, "formation": 55, "type": 84, "result": 80 } },
+      { "play": "02", "down": "", "formation": "4-3 Over", "type": "Run", "result": "2 yd", "confidence": 61, "confidenceByField": { "down": 0, "formation": 81, "type": 86, "result": 77 } },
+      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass", "result": "Incomplete", "confidence": 56, "confidenceByField": { "down": 85, "formation": 0, "type": 50, "result": 90 } }
     ]
   },
   "Sample C: Corrupted / unsupported file": {
