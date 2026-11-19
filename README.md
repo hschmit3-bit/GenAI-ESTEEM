@@ -1,49 +1,71 @@
-BallHawk
+# BallHawk
 
-BallHawk is an AI film-breakdown assistant that watches football clips and fills in the play-by-play analytics sheet, so coaches review data instead of typing it.
+**BallHawk is an AI film-breakdown assistant that watches football clips and fills in the play-by-play breakdown sheet, so coaches review data instead of typing it.**
 
-What the first working slice does
+**Intended user:** an assistant coach or graduate assistant at a mid-sized college or large high school football program. They break down game and practice film by hand, typing down and distance, formation, play type and result for every play. That takes hours per game and leaves less time for deeper analysis.
 
-The prototype is a single screen. The user:
+## Quick links
 
-Chooses whether they are breaking down Offense or Defense.
-Picks the camera angle: Sideline, End zone, or Unknown.
-Uploads a clip (.mp4, .mov, .webm) or picks a built-in sample clip.
-Clicks Tag Plays.
+| | |
+|---|---|
+| **Live prototype (Replit)** | [ball-hawk-film-breakdown.replit.app](https://ball-hawk-film-breakdown.replit.app/) |
+| **Demo video (Google Drive)** | See [Demo Video](#demo-video) |
+| **Revision documentation:** improvements, peer feedback, tests, before-and-after, risk response | [revision.md](revision.md) |
+| **AI-use disclosure (draft)** | [ai-use-disclosure.md](ai-use-disclosure.md) |
+| **Prototype code** | [`artifacts/ballhawk/src/`](artifacts/ballhawk/src/) |
+| **Screenshots used as evidence** | [`docs/screenshots/`](docs/screenshots/) |
 
-BallHawk then fills in a breakdown sheet one play at a time. The columns are Down & Distance, Formation, Play Type, Result, and Confidence. Low-confidence or blank cells are highlighted yellow for review. Every cell can be edited, and the finished sheet exports to CSV. A "Tag another clip" button takes the user back to the start, so the flow has no dead end.
+## Opening the prototype
 
-Opening the prototype
-Live prototype (Replit): (https://ball-hawk-film-breakdown.replit.app/)
-To run it yourself: fork this repository into Replit and click Run. No setup or API keys are needed.
-Quick demo: select Offense and Sideline, choose Sample A, and click Tag Plays.
-AI behavior: simulated (Wizard of Oz)
+- **Live:** open the link above. No login or setup is needed, and it works in any desktop browser.
+- **Quick demo (about 1 minute):** choose **Defense**, set the angle to **End zone**, pick **Sample B**, and click **Tag Plays**. Four yellow cells need review. Type in the two blank ones, press **✓** (or **✓ Confirm all**) for the others, then click **Export CSV**.
+- **Run it yourself:** import this repository into Replit and click **Run**. No API keys are needed.
 
-The video analysis in this prototype is simulated. No model watches the film. Each sample clip returns pre-scripted results from a JSON file. An uploaded video with a valid file type shows the same demo results and is labeled "Demo results — live video analysis not yet connected."
+## What the prototype does
 
-The following parts are fully working:
+1. Choose **Offense** or **Defense**, a **camera angle**, and a **clip**: upload an .mp4/.mov/.webm or pick a sample.
+2. Click **Tag Plays**. BallHawk fills in the breakdown sheet one play at a time: Down & Distance, Formation (or Defensive Front), Play Type, Result and a Confidence score.
+3. Fields under 70% confidence, or left blank, turn **yellow**. One count, shown in the summary, the banner and the **Review fields (N)** button, tracks how many are left.
+4. Fix a wrong field by typing in it, or confirm a correct one with **✓**. **✓ Confirm all** confirms every flagged field that has a value. Blank fields still need typing.
+5. **Export CSV.** If fields are still unreviewed, BallHawk warns you first. The CSV's **Review status** column marks any unchecked or bulk-confirmed AI guesses.
+6. **Tag another clip** starts over.
 
-the input flow
-validation
-the play-by-play fill-in
-confidence highlighting
-cell editing
-CSV export
-Test results
-Test	Input or action	What happened	Pass, partial, or fail
+## What's working, simulated and planned
 
-TABLE
+| Part | Status |
+|---|---|
+| Input flow, validation, error messages | **Working** |
+| Filling the sheet play by play, editing, ✓ / Confirm all, review count, export check, CSV export | **Working** |
+| Video analysis (reading the film) | **Simulated (Wizard of Oz).** Results come from [`sampleData.json`](artifacts/ballhawk/src/sampleData.json). Uploaded clips show demo results labeled "live video analysis not yet connected." |
+| Confidence scores | **Simulated.** Written into the sample data. |
+| Vision-model tagging (starting with Formation), accuracy testing against hand-tagged plays | **Planned** |
+| Hudl integration, accounts, saved breakdowns | **Out of scope** |
 
-| Typical case | Offense, Sideline, Sample A (clear day-game film, 3 plays)	| The sheet filled in one play at a time. All 15 fields were completed at 85–97% confidence with no review flags, and the CSV exported correctly. |	Pass |
-| Challenge case	| Defense, End zone, Sample B (rain, similar jersey colors, 3 plays)	| A low-visibility warning appeared. Five fields were highlighted yellow or left blank as "needs review." Edited cells turned green and carried into the CSV. The defensive column header and values switched correctly.|	Partial: the flagging communicates the idea, but the uncertainty is scripted, not detected from the video |
-| Invalid or empty case |	(a) Clicked Tag Plays with nothing selected; (b) uploaded a .pdf; (c) Sample C (corrupted file)	| (a) Inline red messages named each missing step, and the other inputs were kept. (b, c) A "couldn't read this clip" message listed the supported formats and offered a one-click "Try a sample clip" fix.	| Pass |
+## Changes in this revision
 
-Known limitations:
+Based on peer review and re-testing (full details in [revision.md](revision.md)):
 
-Video analysis is simulated. The tagging results are scripted, so this slice does not yet test the core accuracy question: whether AI can hit about 90% per field on real film. The next step is to send one frame per play to a vision model to classify the formation.
-Confidence scores are not real. The yellow review highlights come from the scripted data, not from model uncertainty. Real confidence values will need calibration against hand-tagged plays.
-No saved data or Hudl workflow. Breakdowns are lost on refresh unless exported to CSV. The tool also runs on uploaded clips rather than beside Hudl. Hudl integration and accounts are intentionally out of scope for this slice.
+- **One consistent review count.** Fixes the 8-vs-5 mismatch both reviewers reported.
+- **Marking fields as reviewed.** Edit, ✓, or ✓ Confirm all. Fixes the stuck "edited REVIEW" tag.
+- **Export check and a CSV Review status column.** The safeguard against exporting unchecked AI guesses.
 
-Notes
+## Code map
 
-AI use: Claude (Anthropic) helped draft the Replit build prompt and this README. I made the final decisions and checked the results.
+| File | What it does |
+|---|---|
+| [`artifacts/ballhawk/src/App.tsx`](artifacts/ballhawk/src/App.tsx) | The whole interface: inputs, scripted tagging, review rule (`needsReview`), confirm actions, export check, CSV |
+| [`artifacts/ballhawk/src/sampleData.json`](artifacts/ballhawk/src/sampleData.json) | Scripted results for Sample A (clear film), Sample B (rain, end zone) and Sample C (corrupted file) |
+| [`artifacts/ballhawk/src/index.css`](artifacts/ballhawk/src/index.css) | Styles |
+| `artifacts/api-server`, `lib/`, `artifacts/mockup-sandbox` | Replit's default workspace scaffolding, not used by the prototype |
+
+## Demo Video
+
+**[Demo video — Google Drive link coming soon]**
+
+Viewing access is granted to Emelia Hughes and Samuel Huang. The same file is uploaded to Canvas.
+
+## Notes
+
+- No passwords, API keys or secrets are stored in this repository.
+- All sample results are fictional. No real game film is stored here, and uploaded clips never leave the browser.
+- AI use: Claude (Anthropic) and Replit Agent. See [ai-use-disclosure.md](ai-use-disclosure.md).
