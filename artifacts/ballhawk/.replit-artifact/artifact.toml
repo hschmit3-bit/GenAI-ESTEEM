@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "BallHawk"
+description = "A single-page football film breakdown prototype for coaches to tag scripted sample plays or upload a clip, review and edit extracted fields, and export a CSV."
+version = "1.0.0"
+id = "artifacts/ballhawk"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23547
+
+[services.development]
+run = "pnpm --filter @workspace/ballhawk run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ballhawk", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ballhawk/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23547"
+BASE_PATH = "/"

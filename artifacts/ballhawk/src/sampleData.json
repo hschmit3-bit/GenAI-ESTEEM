@@ -1,0 +1,30 @@
+{
+  "Sample A: Clear sideline film, day game (3 plays)": {
+    "offense": [
+      { "play": "01", "down": "1st & 10", "formation": "Shotgun Trips Right", "type": "Pass", "result": "+8", "confidence": 94, "confidenceByField": {} },
+      { "play": "02", "down": "2nd & 2", "formation": "I-Form", "type": "Run", "result": "+3", "confidence": 91, "confidenceByField": {} },
+      { "play": "03", "down": "1st & 10", "formation": "Pistol", "type": "Screen", "result": "+12", "confidence": 88, "confidenceByField": {} }
+    ],
+    "defense": [
+      { "play": "01", "down": "1st & 10", "formation": "4-3 Over", "type": "Run", "result": "2 yd", "confidence": 94, "confidenceByField": {} },
+      { "play": "02", "down": "2nd & 8", "formation": "Nickel", "type": "Pass", "result": "11 yd", "confidence": 89, "confidenceByField": {} },
+      { "play": "03", "down": "1st & 10", "formation": "Cover 3 shell", "type": "Screen", "result": "4 yd", "confidence": 92, "confidenceByField": {} }
+    ]
+  },
+  "Sample B: Rainy end-zone film, similar jersey colors (3 plays)": {
+    "offense": [
+      { "play": "01", "down": "3rd & 4", "formation": "Shotgun (uncertain, 55%)", "type": "Pass", "result": "+6", "confidence": "mixed", "confidenceByField": { "formation": 55 } },
+      { "play": "02", "down": "", "formation": "Singleback", "type": "Run", "result": "+2", "confidence": 60, "confidenceByField": { "down": 0 } },
+      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass (50%)", "result": "Incomplete", "confidence": 78, "confidenceByField": { "formation": 80, "type": 50 } }
+    ],
+    "defense": [
+      { "play": "01", "down": "3rd & 4", "formation": "Nickel (uncertain, 55%)", "type": "Pass", "result": "+6", "confidence": "mixed", "confidenceByField": { "formation": 55 } },
+      { "play": "02", "down": "", "formation": "4-3 Over", "type": "Run", "result": "+2", "confidence": 60, "confidenceByField": { "down": 0 } },
+      { "play": "03", "down": "1st & 10", "formation": "", "type": "Pass (50%)", "result": "Incomplete", "confidence": 78, "confidenceByField": { "formation": 80, "type": 50 } }
+    ]
+  },
+  "Sample C: Corrupted / unsupported file": {
+    "offense": [],
+    "defense": []
+  }
+}
